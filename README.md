@@ -12,7 +12,7 @@ Added several more styles of translating datetimes
 
 # To do:
 
-*Update to SQLAlchemy 2.0*  
+**Update to SQLAlchemy 2.0**  
 Have multiple arguments in t_list to show multiple projects at the same time
 
 # What is it?

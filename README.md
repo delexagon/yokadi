@@ -14,6 +14,7 @@ Changed datetimes from dd/mm to mm/dd format
 # To do:
 
 **Update to SQLAlchemy 2.0**  
+Streamline t_add->t_due->t_recurs into a single command  
 Make sure that everything is the most recent version  
 Have multiple arguments in t_list to show multiple projects at the same time
 

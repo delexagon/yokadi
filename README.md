@@ -9,6 +9,7 @@ Changed style of "yokadi> " text
 Made t_sort operator to change urgency of events to order of due date  
 Added --limit argument to t_list to limit the number of events shown, and made the -t flag no longer have a set limit  
 Added several more styles of translating datetimes  
+Changed datetimes from dd/mm to mm/dd format
 
 # To do:
 

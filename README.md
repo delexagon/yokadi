@@ -1,6 +1,20 @@
 [![Build Status](https://travis-ci.org/agateau/yokadi.png?branch=master)](https://travis-ci.org/agateau/yokadi)
 [![Coverage Status](https://coveralls.io/repos/agateau/yokadi/badge.png)](https://coveralls.io/r/agateau/yokadi)
 
+# Done:
+
+Added biweekly recurrences  
+Made t_remove take multiple arguments  
+Changed style of "yokadi> " text  
+Made t_sort operator to change urgency of events to order of due date  
+Added --limit argument to t_list to limit the number of events shown, and made the -t flag no longer have a set limit  
+Added several more styles of translating datetimes  
+
+# To do:
+
+*Update to SQLAlchemy 2.0*  
+Have multiple arguments in t_list to show multiple projects at the same time
+
 # What is it?
 
 Yokadi is a command-line oriented, SQLite powered, TODO list tool.  It helps

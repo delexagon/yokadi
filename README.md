@@ -3,22 +3,22 @@
 
 # Done:
 
-Added biweekly recurrences  
-Made t_remove take multiple arguments  
-Changed style of "yokadi> " text  
-Made t_sort operator to change urgency of events to order of due date  
-Added --limit argument to t_list to limit the number of events shown, and made the -t flag no longer have a set limit  
-Added several more styles of translating datetimes  
-Changed datetimes from dd/mm to mm/dd format
+- Added biweekly recurrences  
+- Made t_remove take multiple arguments  
+- Changed style of "yokadi> " text  
+- Made t_sort operator to change urgency of events to order of due date  
+- Added --limit argument to t_list to limit the number of events shown, and made the -t flag no longer have a set limit  
+- Added several more styles of translating datetimes  
+- Changed datetimes from dd/mm to mm/dd format
 
 # To do:
 
-**Update to SQLAlchemy 2.0**  
-Streamline t_add->t_due->t_recurs into a single command  
-Make sure that everything is the most recent version  
-Have multiple arguments in t_list to show multiple projects at the same time  
+- **Update to SQLAlchemy 2.0**  
+- Streamline t_add->t_due->t_recurs into a single command  
+- Make sure that everything is the most recent version  
+- Have multiple arguments in t_list to show multiple projects at the same time  
   - Temporary solution: add keys in project names and exploit SQL LIKE clause  
-Make autocomplete for event names, rather than having to type in numbers  
+- Make autocomplete for event names, rather than having to type in numbers  
 
 # What is it?
 

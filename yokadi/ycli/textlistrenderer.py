@@ -142,10 +142,7 @@ class DueDateFormater(object):
         if not task.dueDate:
             return "", None
         delta = task.dueDate - self.today
-        if delta.days != 0:
-            value = task.dueDate.strftime("%x %H:%M")
-        else:
-            value = task.dueDate.strftime("%H:%M")
+        value = task.dueDate.strftime("%x %I:%M %p")
 
         if self.shortFormat:
             value = ydateutils.formatTimeDelta(delta)
@@ -170,7 +167,7 @@ class TextListRenderer(object):
         self.firstHeader = True
         self.splitOnDate = splitOnDate
 
-        if self.termWidth < 100:
+        if self.termWidth < 70:
             dueColumnWidth = 8
             shortDateFormat = True
         else:

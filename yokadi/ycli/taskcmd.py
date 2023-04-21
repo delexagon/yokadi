@@ -284,27 +284,28 @@ class TaskCmd(object):
 
     def parser_t_remove(self):
         parser = YokadiOptionParser()
-        parser.usage = "t_remove [options] <id>"
-        parser.description = "Delete a task."
+        parser.usage = "t_remove [options] <id1> <id2> ..."
+        parser.description = "Delete tasks."
         parser.add_argument("-f", dest="force", default=False, action="store_true",
                             help="Skip confirmation prompt")
-        parser.add_argument("id")
+        parser.add_argument("ids", nargs='+')
         return parser
 
     def do_t_remove(self, line):
         parser = self.parser_t_remove()
         args = parser.parse_args(line)
-        task = self.getTaskFromId(args.id)
-        if not args.force:
-            if not tui.confirm("Remove task '%s'" % task.title):
-                return
-        project = task.project
-        self.session.delete(task)
-        print("Task '%s' removed" % (task.title))
+        for id in args.ids:
+          task = self.getTaskFromId(id)
+          if not args.force:
+              if not tui.confirm("Remove task '%s'" % task.title):
+                  return
+          project = task.project
+          self.session.delete(task)
+          print("Task '%s' removed" % (task.title))
 
-        # Delete project with no associated tasks
-        if self.session.query(Task).filter_by(project=project).count() == 0:
-            self.session.delete(project)
+          # Delete project with no associated tasks
+          if self.session.query(Task).filter_by(project=project).count() == 0:
+              self.session.delete(project)
         self.session.commit()
     complete_t_remove = taskIdCompleter
 
@@ -366,10 +367,15 @@ class TaskCmd(object):
                             type=int,
                             help="tasks with urgency greater or equal than <urgency>",
                             metavar="<urgency>")
+                            
+        parser.add_argument("-l", "--limit", dest="limit",
+                            type=int,
+                            help="maximum number of tasks to print",
+                            metavar="<limit>")
 
         parser.add_argument("-t", "--top-due", dest="topDue",
                             default=False, action="store_true",
-                            help="top 5 urgent tasks of each project based on due date")
+                            help="order tasks of each project based on due date")
 
         parser.add_argument("--overdue", dest="due",
                             action="append_const", const="now",
@@ -571,7 +577,8 @@ class TaskCmd(object):
         if args.topDue:
             filters.append(DbFilter(Task.dueDate is not None))
             order = [Task.dueDate, ]
-            limit = 5
+        if args.limit is not None:
+            limit = args.limit
         if args.due:
             for due in args.due:
                 dueOperator, dueLimit = ydateutils.parseDateLimit(due)
@@ -655,6 +662,24 @@ class TaskCmd(object):
             self.session.merge(task)
         self.session.commit()
     complete_t_reorder = ProjectCompleter(1)
+    
+    def do_t_sort(self, line):
+        """Reorder the urgency of tasks of a project according to the due date.
+        t_sort <project_name>"""
+        try:
+            project = self.session.query(Project).filter_by(name=line).one()
+        except (MultipleResultsFound, NoResultFound):
+            raise BadUsageException("You must provide a valid project name")
+
+        taskList = self.session.query(Task).filter(Task.projectId == project.id,
+                                                   Task.status != 'done').order_by(desc(Task.dueDate))
+
+        for urgency, x in enumerate(taskList):
+            task = self.session.query(Task).get(x.id)
+            task.urgency = urgency
+            self.session.merge(task)
+        self.session.commit()
+    complete_t_sort = ProjectCompleter(1)
 
     def do_t_medit(self, line):
         """Mass edit tasks of a project.
@@ -941,6 +966,7 @@ class TaskCmd(object):
         t_recurs <id> monthly <first/second/third/last> <mo, tu, we, th, fr, sa, su> <hh:mm>
         t_recurs <id> quarterly <dd> <HH:MM>
         t_recurs <id> quarterly <first/second/third/last> <mo, tu, we, th, fr, sa, su> <hh:mm>
+        t_recurs <id> biweekly <mo, tu, we, th, fr, sa, su> <hh:mm>
         t_recurs <id> weekly <mo, tu, we, th, fr, sa, su> <hh:mm>
         t_recurs <id> daily <HH:MM>
         t_recurs <id> none (remove recurrence)"""

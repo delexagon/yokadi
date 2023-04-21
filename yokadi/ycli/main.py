@@ -42,7 +42,7 @@ from yokadi.core import basepaths
 from yokadi.core import fileutils
 from yokadi.update import update
 
-from yokadi.ycli import tui, commonargs
+from yokadi.ycli import tui, commonargs, colors
 from yokadi.ycli.aliascmd import AliasCmd, resolveAlias
 from yokadi.ycli.confcmd import ConfCmd
 from yokadi.ycli.keywordcmd import KeywordCmd
@@ -61,7 +61,7 @@ class YokadiCmd(TaskCmd, ProjectCmd, KeywordCmd, ConfCmd, AliasCmd, Cmd):
         KeywordCmd.__init__(self)
         AliasCmd.__init__(self)
         ConfCmd.__init__(self)
-        self.prompt = "yokadi> "
+        self.prompt = '\n' + colors.BOLD + colors.PURPLE + "yokadi> " + colors.RESET
         self.historyPath = basepaths.getHistoryPath()
         self.loadHistory()
 

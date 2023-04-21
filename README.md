@@ -311,6 +311,7 @@ Other people contributed to Yokadi:
 - Marc-Antoine Gouillart <marsu_pilami@msn.com>: Windows port
 - Kartik Mistry <kartik@debian.org>: man pages
 - Jonas Christian Drewsen <jdrewsen@gmail.com>: quarterly recurrence feature
+- Del <delexagon@gmail.com>: minor changes
 
 <!-- vim: set ts=4 sw=4 et: -->
 

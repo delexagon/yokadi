@@ -12,7 +12,7 @@ import sys
 from datetime import datetime
 from uuid import uuid1
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import scoped_session, sessionmaker, relationship
@@ -329,6 +329,7 @@ class Database(object):
 
         echo = os.environ.get("YOKADI_SQL_DEBUG", "0") != "0"
         self.engine = create_engine(connectionString, echo=echo)
+        self.inspector = inspect(self.engine)
         self.session = scoped_session(sessionmaker(bind=self.engine))
 
         if not os.path.exists(dbFileName) or memoryDatabase:
@@ -352,7 +353,7 @@ class Database(object):
         Base.metadata.create_all(self.engine)
 
     def getVersion(self):
-        if not self.engine.has_table("config"):
+        if not self.inspector.has_table("config"):
             # There was no Config table in v1
             return 1
 
@@ -362,7 +363,7 @@ class Database(object):
             raise YokadiException("Configuration key '%s' does not exist. This should not happen!" % DB_VERSION_KEY)
 
     def setVersion(self, version):
-        assert self.engine.has_table("config")
+        assert self.inspector.has_table("config")
         instance = self.session.query(Config).filter_by(name=DB_VERSION_KEY).one()
         instance.value = str(version)
         self.session.add(instance)

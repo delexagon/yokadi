@@ -10,6 +10,7 @@
 - Added --limit argument to t_list to limit the number of events shown, and made the -t flag no longer have a set limit  
 - Added several more styles of translating datetimes  
 - Changed datetimes from dd/mm to mm/dd format
+- Made it so that it can actually be installed on a modern computer
 
 # To do:
 

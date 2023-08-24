@@ -330,11 +330,6 @@ class Database(object):
 
         echo = os.environ.get("YOKADI_SQL_DEBUG", "0") != "0"
         self.engine = create_engine(connectionString, echo=echo)
-        try:
-          self.inspector = inspect(self.engine)
-        except OperationalError:
-          # Database does not yet exist
-          self.inspector = None
         self.session = scoped_session(sessionmaker(bind=self.engine))
 
         if not os.path.exists(dbFileName) or memoryDatabase:
@@ -349,6 +344,7 @@ class Database(object):
                 self.session.add(Config(name=DB_VERSION_KEY, value=str(DB_VERSION), system=True,
                                         desc="Database schema release number"))
             self.session.commit()
+        self.inspector = inspect(self.engine)
 
         if not updateMode:
             self.checkVersion()

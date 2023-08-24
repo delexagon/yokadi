@@ -329,7 +329,11 @@ class Database(object):
 
         echo = os.environ.get("YOKADI_SQL_DEBUG", "0") != "0"
         self.engine = create_engine(connectionString, echo=echo)
-        self.inspector = inspect(self.engine)
+        try:
+          self.inspector = inspect(self.engine)
+        except sqlalchemy.exc.OperationalError:
+          # Database does not yet exist
+          self.inspector = None
         self.session = scoped_session(sessionmaker(bind=self.engine))
 
         if not os.path.exists(dbFileName) or memoryDatabase:

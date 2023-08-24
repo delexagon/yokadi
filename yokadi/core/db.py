@@ -20,6 +20,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import Column, Integer, Boolean, Unicode, DateTime, Enum, ForeignKey, UniqueConstraint
 from sqlalchemy.types import TypeDecorator, VARCHAR
+from sqlalchemy.exc import OperationalError
 
 from yokadi.core.recurrencerule import RecurrenceRule
 from yokadi.core.yokadiexception import YokadiException
@@ -331,7 +332,7 @@ class Database(object):
         self.engine = create_engine(connectionString, echo=echo)
         try:
           self.inspector = inspect(self.engine)
-        except sqlalchemy.exc.OperationalError:
+        except OperationalError:
           # Database does not yet exist
           self.inspector = None
         self.session = scoped_session(sessionmaker(bind=self.engine))

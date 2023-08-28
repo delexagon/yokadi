@@ -8,9 +8,10 @@ from datetime import datetime
 
 from dateutil import rrule
 
-from yokadi.core.ydateutils import getHourAndMinute, getWeekDayNumberFromDay, parseHumaneDateTime
+from yokadi.core.ydateutils import getHourAndMinute, getWeekDayNumberFromDay, parseHumaneDateTime, guessTime, TIME_FORMATS
 from yokadi.core.yokadiexception import YokadiException
 
+weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 FREQUENCIES = {0: "Yearly", 1: "Monthly", 2: "Weekly", 3: "Daily"}
 
@@ -86,7 +87,15 @@ class RecurrenceRule(object):
             if len(tokens) != 3:
                 raise YokadiException("You should give day and time for weekly task")
             byweekday = getWeekDayNumberFromDay(tokens[1].lower())
-            byhour, byminute = getHourAndMinute(tokens[2])
+            time = guessTime(tokens[2], TIME_FORMATS)
+            byhour, byminute = time.hour, time.minute
+        elif tokens[0].lower()[0:3] in weekdays:
+            freq = rrule.WEEKLY
+            if len(tokens) != 2:
+                raise YokadiException("You should give day and time for weekly task")
+            byweekday = weekdays.index(tokens[0].lower()[0:3])
+            time = guessTime(tokens[1], TIME_FORMATS)
+            byhour, byminute = time.hour, time.minute
         elif tokens[0] == "biweekly":
             freq = rrule.WEEKLY
             interval = 2

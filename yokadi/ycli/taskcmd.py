@@ -96,14 +96,20 @@ class TaskCmd(object):
         it = iter(splits)
         add_str = next(it).strip()
         task_id = self.do_t_add(add_str)
-        for break_ in it:
-          subcommand = next(it)
-          if break_[0] == 'd':
-            self.do_t_due(f"{task_id} {subcommand.strip()}")
-          elif break_[0] == 'r':
-            self.do_t_recurs(f"{task_id} {subcommand.strip()}")
-          elif break_[0] == 'e':
-            self.do_t_simple_describe(f"{task_id} {subcommand.strip()}")
+        try:
+          for break_ in it:
+            subcommand = next(it)
+            if break_[0] == 'd':
+              self.do_t_due(f"{task_id} {subcommand.strip()}")
+            elif break_[0] == 'r':
+              self.do_t_recurs(f"{task_id} {subcommand.strip()}")
+            elif break_[0] == 'e':
+              self.do_t_simple_describe(f"{task_id} {subcommand.strip()}")
+        except YokadiException as error:
+          task = self.getTaskFromId(task_id)
+          self.session.delete(task)
+          self.session.commit()
+          print(f"Error encountered: {error}; task removed")
 
     complete_t_add_extra = projectAndKeywordCompleter
 
@@ -1014,6 +1020,7 @@ class TaskCmd(object):
         rule = RecurrenceRule.fromHumaneString(tokens[1])
         task.setRecurrenceRule(rule)
         self.session.commit()
+        print("Recurrence set; task '%s' next occurrence is scheduled at %s" % (task.title, task.dueDate))
     complete_t_recurs = recurrenceCompleter
 
     def do_t_filter(self, line):

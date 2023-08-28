@@ -54,14 +54,17 @@ from yokadi.core.yokadioptionparser import YokadiOptionParserNormalExitException
 
 # TODO: move YokadiCmd to a separate module in ycli package
 class YokadiCmd(TaskCmd, ProjectCmd, KeywordCmd, ConfCmd, AliasCmd, Cmd):
-    def __init__(self):
+    def __init__(self, silent=False):
         Cmd.__init__(self)
         TaskCmd.__init__(self)
         ProjectCmd.__init__(self)
         KeywordCmd.__init__(self)
         AliasCmd.__init__(self)
         ConfCmd.__init__(self)
-        self.prompt = '\n' + colors.BOLD + colors.PURPLE + "yokadi> " + colors.RESET
+        if not silent:
+          self.prompt = "\nyokadi> "
+        else:
+          self.prompt = ''
         self.historyPath = basepaths.getHistoryPath()
         self.loadHistory()
 
@@ -201,6 +204,10 @@ def createArgumentParser():
                         dest="update", action="store_true",
                         help="Update database to the latest version")
 
+    parser.add_argument("-s", "--silent",
+                        dest="silent", action="store_true",
+                        help="Do not print yokadi> or newline between commands")
+
     parser.add_argument('cmd', nargs='*')
     return parser
 
@@ -231,7 +238,7 @@ def main():
         return 0
     db.setDefaultConfig()  # Set default config parameters
 
-    cmd = YokadiCmd()
+    cmd = YokadiCmd(args.silent)
 
     try:
         if len(args.cmd) > 0:

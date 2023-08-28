@@ -11,10 +11,10 @@
 - Added several more styles of translating datetimes  
 - Changed datetimes from dd/mm to mm/dd format
 - Made it so that it can actually be installed on a modern computer
+- So far, it seems to work with SQLAlchemy 2.0
 
 # To do:
 
-- **Update to SQLAlchemy 2.0**  
 - Streamline t_add->t_due->t_recurs into a single command  
 - Make sure that everything is the most recent version  
 - Have multiple arguments in t_list to show multiple projects at the same time  

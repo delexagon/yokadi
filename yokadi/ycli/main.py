@@ -239,7 +239,6 @@ def main():
     db.setDefaultConfig()  # Set default config parameters
 
     cmd = YokadiCmd(args.silent)
-    print(args.cmd)
     try:
         if len(args.cmd) > 0:
             if not args.silent:

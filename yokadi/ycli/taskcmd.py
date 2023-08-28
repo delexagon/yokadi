@@ -88,6 +88,22 @@ class TaskCmd(object):
         if args.describe:
             self.do_t_describe(self.lastTaskId)
         return task
+        
+    def do_t_add_extra(self, line):
+        """Add new task. Will prompt to create keywords if they do not exist.
+        t_add <projectName> [@<keyword1>] [@<keyword2>] <title>"""
+        split = line.split(' ddd ')
+        date_str = split[1].strip() if len(split) > 1 else None
+        split = line.split(' rrr ') if date_str == None else split
+        recur_str = split[1].strip() if len(split) > 1 else None
+        add_str = split[0].strip()
+        task_id = self.do_t_add(add_str)
+        if date_str != None:
+          self.do_t_due(f"{task_id} {date_str}")
+        elif recur_str != None:
+          self.do_t_recurs(f"{task_id} {recur_str}")
+
+    complete_t_add_extra = projectAndKeywordCompleter
 
     def do_t_add(self, line):
         """Add new task. Will prompt to create keywords if they do not exist.
@@ -97,6 +113,7 @@ class TaskCmd(object):
             self.session.add(task)
             self.session.commit()
             print("Added task '%s' (id=%d)" % (task.title, task.id))
+        return task.id
 
     complete_t_add = projectAndKeywordCompleter
 

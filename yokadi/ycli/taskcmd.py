@@ -92,16 +92,18 @@ class TaskCmd(object):
     def do_t_add_extra(self, line):
         """Add new task. Will prompt to create keywords if they do not exist.
         t_add <projectName> [@<keyword1>] [@<keyword2>] <title>"""
-        split = line.split(' ddd ')
-        date_str = split[1].strip() if len(split) > 1 else None
-        split = line.split(' rrr ') if date_str == None else split
-        recur_str = split[1].strip() if len(split) > 1 else None
-        add_str = split[0].strip()
+        splits = re.split(r' ([a-z])\1{2,} ', line)
+        it = iter(splits)
+        add_str = next(it).strip()
         task_id = self.do_t_add(add_str)
-        if date_str != None:
-          self.do_t_due(f"{task_id} {date_str}")
-        elif recur_str != None:
-          self.do_t_recurs(f"{task_id} {recur_str}")
+        for break_ in it:
+          subcommand = next(it)
+          if break_[0] == 'd':
+            self.do_t_due(f"{task_id} {subcommand.strip()}")
+          elif break_[0] == 'r':
+            self.do_t_recurs(f"{task_id} {subcommand.strip()}")
+          elif break_[0] == 'e':
+            self.do_t_simple_describe(f"{task_id} {subcommand.strip()}")
 
     complete_t_add_extra = projectAndKeywordCompleter
 
@@ -169,6 +171,24 @@ class TaskCmd(object):
             self.lastTaskId = task.id
         return task
 
+    
+    def do_t_simple_describe(self, line):
+        """Enter a shorter description of a task.
+        t_describe <id> [words]"""
+        def updateDescription(description):
+            task.description = description
+
+        line = parseutils.simplifySpaces(line)
+        space_loc = line.index(' ')
+        task = self.getTaskFromId(line[:space_loc])
+        description = line[space_loc:].strip()
+        updateDescription(description)
+        self.session.merge(task)
+        self.session.commit()
+        print("Set description to '%s' (id=%d)" % (task.description, task.id))
+
+    complete_t_describe = taskIdCompleter
+    
     def do_t_describe(self, line):
         """Starts an editor to enter a longer description of a task.
         t_describe <id>"""

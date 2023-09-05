@@ -10,13 +10,14 @@
 - Added --limit argument to t_list to limit the number of events shown, and made the -t flag no longer have a set limit  
 - Added several more styles of translating datetimes  
 - Changed datetimes from dd/mm to mm/dd format
-- Made it so that it can actually be installed on a modern computer
-- So far, it seems to work with SQLAlchemy 2.0
+- Made it so that it can actually be installed on a modern computer  
+- So far, it seems to work with SQLAlchemy 2.0  
+- Streamlined t_add->t_due->t_recurs into a single command (use t_add_extra, with ' ddd <date_string> rrr <recurrence_string> eee <description_string>')  
+- Weekly recurrences are now assumed when you type in a day of the week into t_recurs  
+- Added a command line method for shorter descriptions, rather than only being able to use an editor
 
 # To do:
 
-- Streamline t_add->t_due->t_recurs into a single command  
-- Make sure that everything is the most recent version  
 - Have multiple arguments in t_list to show multiple projects at the same time  
   - Temporary solution: add keys in project names and exploit SQL LIKE clause  
 - Make autocomplete for event names, rather than having to type in numbers  

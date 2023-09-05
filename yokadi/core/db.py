@@ -184,14 +184,16 @@ class Task(Base):
         else:
             return ""
      
-    def fastforward(self):
+    def next_recurrence(self):
         """
         If this task is recurring, it brings it up to the next occurrence.
+        This means going backwards if it has been advanced, or bringing it to
+        here if it is behind.
         Otherwise, does nothing.
         """
-        if not self.recurrence or self.dueDate > datetime.now():
+        if not self.recurrence:
             return
-        self.dueDate = self.recurrence.getNext(self.dueDate)
+        self.dueDate = self.recurrence.getNext(datetime.now())
         session = getSession()
         session.merge(self)
         

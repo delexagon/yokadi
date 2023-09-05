@@ -106,6 +106,8 @@ def parseHumaneDateTime(line, hint=TIME_HINT_END, today=None):
             return None
         if "%y" not in fmt and "%Y" not in fmt:
             out = out.replace(year=today.year)
+            if out.date() < today.date():
+              out = out.replace(year=out.year+1)
         return out.date()
 
     def applyTimeHint(date, hint):
@@ -197,6 +199,15 @@ def parseHumaneDateTime(line, hint=TIME_HINT_END, today=None):
         else:
             return tDate + timedelta(days=1)
 
+    print("hi")
+    # Date and time?
+    split = line.split()
+    split_date = ' '.join(split[:-1])
+    split_time = split[-1]
+    tDate = guessDate(split_date, SPACE_DATE_FORMATS)
+    tTime = guessTime(split_time, TIME_FORMATS)
+    if tDate is not None and tTime is not None:
+        return datetime.combine(tDate, tTime)
     raise YokadiException("Unable to understand date '%s'" % line)
 
 

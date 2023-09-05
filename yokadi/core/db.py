@@ -189,7 +189,7 @@ class Task(Base):
         If this task is recurring, it brings it up to the next occurrence.
         Otherwise, does nothing.
         """
-        if not self.recurrence:
+        if not self.recurrence or self.dueDate > datetime.now():
             return
         self.dueDate = self.recurrence.getNext(self.dueDate)
         session = getSession()
@@ -201,8 +201,7 @@ class Task(Base):
         and doing the right thing for recurrent tasks
         """
         if self.recurrence and status == "done":
-            self.fastforward()
-            return
+          self.dueDate = self.recurrence.getNext(self.dueDate)
         else:
             self.status = status
             if status == "done":

@@ -183,14 +183,26 @@ class Task(Base):
             return ", ".join(keywords)
         else:
             return ""
-
+     
+    def fastforward(self):
+        """
+        If this task is recurring, it brings it up to the next occurrence.
+        Otherwise, does nothing.
+        """
+        if not self.recurrence:
+            return
+        self.dueDate = self.recurrence.getNext(self.dueDate)
+        session = getSession()
+        session.merge(self)
+        
     def setStatus(self, status):
         """
         Defines the status of the task, taking care of updating the done date
         and doing the right thing for recurrent tasks
         """
         if self.recurrence and status == "done":
-            self.dueDate = self.recurrence.getNext(self.dueDate)
+            self.fastforward()
+            return
         else:
             self.status = status
             if status == "done":

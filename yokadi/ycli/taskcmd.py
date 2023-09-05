@@ -95,21 +95,26 @@ class TaskCmd(object):
         splits = re.split(r' ([a-z])\1{2,} ', line)
         it = iter(splits)
         add_str = next(it).strip()
-        task_id = self.do_t_add(add_str)
-        try:
-          for break_ in it:
-            subcommand = next(it)
-            if break_[0] == 'd':
-              self.do_t_due(f"{task_id} {subcommand.strip()}")
-            elif break_[0] == 'r':
-              self.do_t_recurs(f"{task_id} {subcommand.strip()}")
-            elif break_[0] == 'e':
-              self.do_t_simple_describe(f"{task_id} {subcommand.strip()}")
-        except YokadiException as error:
-          task = self.getTaskFromId(task_id)
-          self.session.delete(task)
-          self.session.commit()
-          print(f"Error encountered: {error}; task removed")
+        task = self._t_add("t_add", add_str)
+        if task:
+            try:
+                for break_ in it:
+                    subcommand = parseutils.simplifySpaces(next(it))
+                    if break_[0] == 'd':
+                        self._t_due(task, subcommand)
+                    elif break_[0] == 'r':
+                        self._t_recurs(task, subcommand)
+                    elif break_[0] == 'e':
+                        self._t_simple_describe(task, subcommand)
+            except YokadiException as error:
+                print(f"Error encountered: {error}; task not added")
+                return
+        
+        else:
+            return
+        self.session.add(task)
+        self.session.commit()
+        print("Added task '%s' (id=%d)" % (task.title, task.id))
 
     complete_t_add_extra = projectAndKeywordCompleter
 
@@ -121,7 +126,6 @@ class TaskCmd(object):
             self.session.add(task)
             self.session.commit()
             print("Added task '%s' (id=%d)" % (task.title, task.id))
-        return task.id
 
     complete_t_add = projectAndKeywordCompleter
 
@@ -177,21 +181,22 @@ class TaskCmd(object):
             self.lastTaskId = task.id
         return task
 
+    def _t_simple_describe(self, task, line):
+        def updateDescription(description):
+            task.description = description
+        description = line.strip()
+        updateDescription(description)
+        print("Set description to '%s' (id=%d)" % (task.description, task.id))
     
     def do_t_simple_describe(self, line):
         """Enter a shorter description of a task.
         t_describe <id> [words]"""
-        def updateDescription(description):
-            task.description = description
-
         line = parseutils.simplifySpaces(line)
-        space_loc = line.index(' ')
-        task = self.getTaskFromId(line[:space_loc])
-        description = line[space_loc:].strip()
-        updateDescription(description)
+        task_id, line = line.split(' ', 1)
+        task = self.getTaskFromId(task_id)
+        self._t_simple_describe(task, line)
         self.session.merge(task)
         self.session.commit()
-        print("Set description to '%s' (id=%d)" % (task.description, task.id))
 
     complete_t_describe = taskIdCompleter
     
@@ -255,6 +260,14 @@ class TaskCmd(object):
         self._t_set_status(line, 'started')
 
     complete_t_mark_started = taskIdCompleter
+    
+    def do_t_fastforward(self, line):
+        task = self.getTaskFromId(line)
+        if not task.recurrence:
+          print("Warning: Task '%s' is not recurring, and the date has not been changed" % task.title)
+        task.fastforward()
+        self.session.commit()
+        print("Task '%s' next occurrence is scheduled at %s" % (task.title, task.dueDate))
 
     def do_t_mark_done(self, line):
         """Mark task as done.
@@ -937,6 +950,14 @@ class TaskCmd(object):
         """@deprecated: should be removed"""
         tui.warnDeprecated("t_set_due", "t_due")
         self.do_t_due(line)
+        
+    def _t_due(self, task, line):
+        if line.lower() == "none":
+            task.dueDate = None
+            print("Due date for task '%s' reset" % task.title)
+        else:
+            task.dueDate = ydateutils.parseHumaneDateTime(line)
+            print("Due date for task '%s' set to %s" % (task.title, task.dueDate.ctime()))
 
     def do_t_due(self, line):
         """Set task's due date
@@ -966,13 +987,7 @@ class TaskCmd(object):
             raise YokadiException("Give a task id and time, date or date & time")
         taskId, line = line.strip().split(" ", 1)
         task = self.getTaskFromId(taskId)
-
-        if line.lower() == "none":
-            task.dueDate = None
-            print("Due date for task '%s' reset" % task.title)
-        else:
-            task.dueDate = ydateutils.parseHumaneDateTime(line)
-            print("Due date for task '%s' set to %s" % (task.title, task.dueDate.ctime()))
+        self._t_due(task, line)
         self.session.merge(task)
         self.session.commit()
     complete_t_set_due = dueDateCompleter
@@ -1002,6 +1017,10 @@ class TaskCmd(object):
         self.session.merge(task)
         self.session.commit()
 
+    def _t_recurs(self, task, line):
+        rule = RecurrenceRule.fromHumaneString(line)
+        task.setRecurrenceRule(rule)
+    
     def do_t_recurs(self, line):
         """Make a task recurs
         t_recurs <id> yearly <dd/mm> <HH:MM>
@@ -1017,8 +1036,7 @@ class TaskCmd(object):
         if len(tokens) < 2:
             raise YokadiException("You should give at least two arguments: <task id> <recurrence>")
         task = self.getTaskFromId(tokens[0])
-        rule = RecurrenceRule.fromHumaneString(tokens[1])
-        task.setRecurrenceRule(rule)
+        self._t_recurs(task, tokens[1])
         self.session.commit()
         print("Recurrence set; task '%s' next occurrence is scheduled at %s" % (task.title, task.dueDate))
     complete_t_recurs = recurrenceCompleter

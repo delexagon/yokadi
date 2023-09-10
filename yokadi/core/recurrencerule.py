@@ -12,6 +12,7 @@ from yokadi.core.ydateutils import getHourAndMinute, getWeekDayNumberFromDay, pa
 from yokadi.core.yokadiexception import YokadiException
 
 weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+months =   ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 
 FREQUENCIES = {0: "Yearly", 1: "Monthly", 2: "Weekly", 3: "Daily"}
 
@@ -125,9 +126,11 @@ class RecurrenceRule(object):
                     bymonthday = None  # Default to current day number - need to be blanked
                 else:
                     raise YokadiException("Unable to understand date. See help t_recurs for details")
-        elif tokens[0] == "yearly":
+        elif tokens[0] == "yearly" or tokens[0].lower()[0:3] in months:
+            if tokens[0] == "yearly":
+                tokens = tokens[1:]
             freq = rrule.YEARLY
-            rDate = parseHumaneDateTime(" ".join(tokens[1:]))
+            rDate = parseHumaneDateTime(" ".join(tokens[0:]))
             bymonth = rDate.month
             bymonthday = rDate.day
             byhour = rDate.hour

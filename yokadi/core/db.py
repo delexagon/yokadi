@@ -182,7 +182,6 @@ class Task(Base):
         else:
             return ""
 
-
     def next_recurrence(self):
         """
         If this task is recurring, it brings it up to the next occurrence.

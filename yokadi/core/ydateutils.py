@@ -6,7 +6,7 @@ Date utilities.
 @license: GPL v3 or later
 """
 import operator
-from datetime import date, datetime, timedelta
+from datetime import date, time, datetime, timedelta
 
 from yokadi.ycli import basicparseutils
 from yokadi.core.yokadiexception import YokadiException
@@ -171,15 +171,6 @@ def parseHumaneDateTime(line, hint=None, today=None):
         dt = datetime.combine(tDate, time.min)
         return applyTimeHint(dt, hint)
 
-    if "-" in line:
-        dateText, timeText = line.split('-', 1)
-        dateText = dateText.strip()
-        timeText = timeText.strip()
-        tDate = guessDate(dateText, SPACE_DATE_FORMATS + DATE_FORMATS)
-        if tDate is not None:
-            tTime = guessTime(timeText, TIME_FORMATS)
-            if tTime is not None:
-                return datetime.combine(tDate, tTime)
     space_count = line.count(' ')
     if space_count > 0:
         # Multiple spaces in date?

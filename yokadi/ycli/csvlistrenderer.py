@@ -8,7 +8,7 @@ Csv rendering of t_list output
 """
 import csv
 
-TASK_FIELDS = ["title", "id", "creationDate", "dueDate", "doneDate", "description",
+TASK_FIELDS = ["title", "creationDate", "dueDate", "doneDate", "description",
                "urgency", "status", "project", "keywords"]
 
 

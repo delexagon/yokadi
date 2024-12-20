@@ -8,19 +8,16 @@ Database access layer using SQL Alchemy
 
 import json
 import os
-import sys
 from datetime import datetime
 from uuid import uuid1
 
 from sqlalchemy import create_engine, inspect
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.orm import scoped_session, sessionmaker, relationship
+from sqlalchemy.orm import scoped_session, sessionmaker, relationship, declarative_base
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import Column, Integer, Boolean, Unicode, DateTime, Enum, ForeignKey, UniqueConstraint
 from sqlalchemy.types import TypeDecorator, VARCHAR
-from sqlalchemy.exc import OperationalError
 
 from yokadi.core.recurrencerule import RecurrenceRule
 from yokadi.core.yokadiexception import YokadiException
@@ -56,7 +53,7 @@ class Project(Base):
     uuid = Column(Unicode, unique=True, default=uuidGenerator, nullable=False)
     name = Column(Unicode, unique=True)
     active = Column(Boolean, default=True)
-    tasks = relationship("Task", cascade="all", backref="project")
+    tasks = relationship("Task", cascade="all", backref="project", cascade_backrefs=False)
 
     def __repr__(self):
         return self.name
@@ -85,7 +82,7 @@ class Keyword(Base):
     id = Column(Integer, primary_key=True)
     name = Column(Unicode, unique=True)
     tasks = association_proxy("taskKeywords", "task")
-    taskKeywords = relationship("TaskKeyword", cascade="all", backref="keyword")
+    taskKeywords = relationship("TaskKeyword", cascade="all", backref="keyword", cascade_backrefs=False)
 
     def __repr__(self):
         return self.name
@@ -93,6 +90,7 @@ class Keyword(Base):
 
 class TaskKeyword(Base):
     __tablename__ = "task_keyword"
+    __mapper_args__ = {"confirm_deleted_rows": False}
     id = Column(Integer, primary_key=True)
     taskId = Column("task_id", Integer, ForeignKey("task.id"), nullable=False)
     keywordId = Column("keyword_id", Integer, ForeignKey("keyword.id"), nullable=False)
@@ -140,8 +138,8 @@ class Task(Base):
     status = Column(Enum("new", "started", "done"), default="new")
     recurrence = Column(RecurrenceRuleColumnType, nullable=False, default=RecurrenceRule())
     projectId = Column("project_id", Integer, ForeignKey("project.id"), nullable=False)
-    taskKeywords = relationship("TaskKeyword", cascade="all", backref="task")
-    lock = relationship("TaskLock", cascade="all", backref="task")
+    taskKeywords = relationship("TaskKeyword", cascade="all", backref="task", cascade_backrefs=False)
+    lock = relationship("TaskLock", cascade="all", backref="task", cascade_backrefs=False)
 
     def setKeywordDict(self, dct):
         """
@@ -174,16 +172,17 @@ class Task(Base):
 
     def getUserKeywordsNameAsString(self):
         """
-        Returns all keywords keys as a string like "key1, key2, key3...".
+        Returns all keywords keys as a string like "@key1 @key2 @key3...".
         Internal keywords (starting with _) are ignored.
         """
         keywords = [k for k in list(self.getKeywordDict().keys()) if not k.startswith("_")]
         keywords.sort()
         if keywords:
-            return ", ".join(keywords)
+            return " ".join(f"@{k}" for k in keywords)
         else:
             return ""
-     
+
+
     def next_recurrence(self):
         """
         If this task is recurring, it brings it up to the next occurrence.
@@ -196,22 +195,20 @@ class Task(Base):
         self.dueDate = self.recurrence.getNext(datetime.now())
         session = getSession()
         session.merge(self)
-        
+
     def setStatus(self, status):
         """
         Defines the status of the task, taking care of updating the done date
         and doing the right thing for recurrent tasks
         """
         if self.recurrence and status == "done":
-          self.dueDate = self.recurrence.getNext(self.dueDate)
+            self.dueDate = self.recurrence.getNext(self.dueDate)
         else:
             self.status = status
             if status == "done":
                 self.doneDate = datetime.now().replace(second=0, microsecond=0)
             else:
                 self.doneDate = None
-        session = getSession()
-        session.merge(self)
 
     def setRecurrenceRule(self, rule):
         """Set recurrence and update the due date accordingly"""
@@ -333,13 +330,10 @@ class Database(object):
 
         dbFileName = os.path.abspath(dbFileName)
 
-        if sys.platform == 'win32':
-            connectionString = 'sqlite://' + dbFileName[0] + '|' + dbFileName[2:]
-        else:
-            connectionString = 'sqlite:///' + dbFileName
-
         if memoryDatabase:
             connectionString = "sqlite:///:memory:"
+        else:
+            connectionString = 'sqlite:///' + dbFileName
 
         echo = os.environ.get("YOKADI_SQL_DEBUG", "0") != "0"
         self.engine = create_engine(connectionString, echo=echo)
@@ -357,7 +351,6 @@ class Database(object):
                 self.session.add(Config(name=DB_VERSION_KEY, value=str(DB_VERSION), system=True,
                                         desc="Database schema release number"))
             self.session.commit()
-        self.inspector = inspect(self.engine)
 
         if not updateMode:
             self.checkVersion()
@@ -367,7 +360,7 @@ class Database(object):
         Base.metadata.create_all(self.engine)
 
     def getVersion(self):
-        if not self.inspector.has_table("config"):
+        if not self._hasConfigTable():
             # There was no Config table in v1
             return 1
 
@@ -377,11 +370,15 @@ class Database(object):
             raise YokadiException("Configuration key '%s' does not exist. This should not happen!" % DB_VERSION_KEY)
 
     def setVersion(self, version):
-        assert self.inspector.has_table("config")
+        assert self._hasConfigTable()
         instance = self.session.query(Config).filter_by(name=DB_VERSION_KEY).one()
         instance.value = str(version)
         self.session.add(instance)
         self.session.commit()
+
+    def _hasConfigTable(self):
+        inspector = inspect(self.engine)
+        return inspector.has_table("config")
 
     def checkVersion(self):
         """Check version and exit if it is not suitable"""

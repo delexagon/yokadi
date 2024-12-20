@@ -10,30 +10,17 @@ Command line oriented, sqlite powered, todo list
 
 import locale
 import os
+import platform
 import sys
 
-try:
-    import readline
-except ImportError:
-    print("You don't have a working readline library.")
-    print("Windows users must install Pyreadline.")
-    print("Get it on https://launchpad.net/pyreadline/+download")
-    print("Or use 'pip install pyreadline'")
-    sys.exit(1)
-
-readline.parse_and_bind("set show-all-if-ambiguous on")
+import readline
 
 import traceback
 from cmd import Cmd
 from argparse import ArgumentParser
 
-try:
-    import sqlalchemy
-except ImportError:
-    print("You must install SQL Alchemy to use Yokadi")
-    print("Get it on http://www.sqlalchemy.org/")
-    print("Or use 'pip install sqlalchemy'")
-    sys.exit(1)
+import sqlalchemy
+from colorama import just_fix_windows_console
 
 import yokadi
 
@@ -42,7 +29,7 @@ from yokadi.core import basepaths
 from yokadi.core import fileutils
 from yokadi.update import update
 
-from yokadi.ycli import tui, commonargs, colors
+from yokadi.ycli import tui, commonargs
 from yokadi.ycli.aliascmd import AliasCmd, resolveAlias
 from yokadi.ycli.confcmd import ConfCmd
 from yokadi.ycli.keywordcmd import KeywordCmd
@@ -51,20 +38,19 @@ from yokadi.ycli.taskcmd import TaskCmd
 from yokadi.core.yokadiexception import YokadiException, BadUsageException
 from yokadi.core.yokadioptionparser import YokadiOptionParserNormalExitException
 
+readline.parse_and_bind("set show-all-if-ambiguous on")
+
 
 # TODO: move YokadiCmd to a separate module in ycli package
 class YokadiCmd(TaskCmd, ProjectCmd, KeywordCmd, ConfCmd, AliasCmd, Cmd):
-    def __init__(self, silent=False):
+    def __init__(self):
         Cmd.__init__(self)
         TaskCmd.__init__(self)
         ProjectCmd.__init__(self)
         KeywordCmd.__init__(self)
         AliasCmd.__init__(self)
         ConfCmd.__init__(self)
-        if not silent:
-          self.prompt = "\nyokadi> "
-        else:
-          self.prompt = ''
+        self.prompt = "yokadi> "
         self.historyPath = basepaths.getHistoryPath()
         self.loadHistory()
 
@@ -138,7 +124,7 @@ class YokadiCmd(TaskCmd, ProjectCmd, KeywordCmd, ConfCmd, AliasCmd, Cmd):
             print("--")
             print("Python: %s" % sys.version.replace("\n", " "))
             print("SQL Alchemy: %s" % sqlalchemy.__version__)
-            print("OS: %s (%s)" % os.uname()[0:3:2])
+            print("OS: %s" % platform.system())
             print("Yokadi: %s" % yokadi.__version__)
             print(cut)
             print()
@@ -204,16 +190,14 @@ def createArgumentParser():
                         dest="update", action="store_true",
                         help="Update database to the latest version")
 
-    parser.add_argument("-s", "--silent",
-                        dest="silent", action="store_true",
-                        help="Do not print yokadi> or newline between commands")
-
     parser.add_argument('cmd', nargs='*')
     return parser
 
 
 def main():
     locale.setlocale(locale.LC_ALL, os.environ.get("LANG", "C"))
+    just_fix_windows_console()
+
     parser = createArgumentParser()
     args = parser.parse_args()
     dataDir, dbPath = commonargs.processArgs(args)
@@ -238,11 +222,11 @@ def main():
         return 0
     db.setDefaultConfig()  # Set default config parameters
 
-    cmd = YokadiCmd(args.silent)
+    cmd = YokadiCmd()
+
     try:
         if len(args.cmd) > 0:
-            if not args.silent:
-              print(" ".join(args.cmd))
+            print(" ".join(args.cmd))
             cmd.onecmd(" ".join(args.cmd))
         else:
             cmd.cmdloop()

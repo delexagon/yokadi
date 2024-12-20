@@ -6,7 +6,7 @@ Date utilities.
 @license: GPL v3 or later
 """
 import operator
-from datetime import date, time, datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from yokadi.ycli import basicparseutils
 from yokadi.core.yokadiexception import YokadiException
@@ -18,6 +18,9 @@ TIME_HINT_BEGIN = "begin"
 TIME_HINT_END = "end"
 
 DATE_FORMATS = [
+    "%d/%m/%Y",
+    "%d/%m/%y",
+    "%d/%m",
     "%m/%d/%Y",
     "%m/%d/%y",
     "%m/%d",
@@ -37,6 +40,7 @@ TIME_FORMATS = [
     "%H:%M",
     "%H",
 ]
+
 
 def parseDateTimeDelta(line):
     # FIXME: Do we really want to support float deltas?
@@ -68,13 +72,13 @@ def testFormats(text, formats):
 
 
 def guessTime(text, formats_set):
+    morning = False
     afternoon = False
-    am = False
     # We do not use the "%p" format to handle AM/PM because its behavior is
     # locale-dependent
     suffix = text[-2:]
     if suffix == "am":
-        am = True
+        morning = True
         text = text[:-2].strip()
     elif suffix == "pm":
         afternoon = True
@@ -85,12 +89,12 @@ def guessTime(text, formats_set):
         return None
     if afternoon and out.hour != 12:
         out += timedelta(hours=12)
-    elif am and out.hour == 12:
+    elif morning and out.hour == 12:
         out -= timedelta(hours=12)
     return out.time()
 
 
-def parseHumaneDateTime(line, hint=TIME_HINT_END, today=None):
+def parseHumaneDateTime(line, hint=None, today=None):
     """Parse human date and time and return structured datetime object
     Datetime  can be absolute (23/10/2008 10:38) or relative (+5M, +3H, +1D, +6W)
     @param line: human date / time
@@ -105,9 +109,10 @@ def parseHumaneDateTime(line, hint=TIME_HINT_END, today=None):
         if not out:
             return None
         if "%y" not in fmt and "%Y" not in fmt:
-            out = out.replace(year=today.year)
             if out.date() < today.date():
-              out = out.replace(year=out.year+1)
+                out = out.replace(year=today.year+1)
+            else:
+                out = out.replace(year=today.year)
         return out.date()
 
     def applyTimeHint(date, hint):
@@ -165,7 +170,7 @@ def parseHumaneDateTime(line, hint=TIME_HINT_END, today=None):
     if tDate is not None:
         dt = datetime.combine(tDate, time.min)
         return applyTimeHint(dt, hint)
-        
+
     if "-" in line:
         dateText, timeText = line.split('-', 1)
         dateText = dateText.strip()
@@ -175,10 +180,29 @@ def parseHumaneDateTime(line, hint=TIME_HINT_END, today=None):
             tTime = guessTime(timeText, TIME_FORMATS)
             if tTime is not None:
                 return datetime.combine(tDate, tTime)
-    elif " " in line:
+    space_count = line.count(' ')
+    if space_count > 0:
+        # Multiple spaces in date?
+        text = line.split(' ')
+        # The time must be the text immediately beforehand.
+        if text[-1] == 'am' or text[-1] == 'pm':
+            timeText = ' '.join(text[-2:])
+            text = text[:-2]
+        # In the formats, a date can be at most three words.
+        elif text.len() > 3:
+            timeText = ' '.join(text[3:])
+            text = text[:3]
+        # A ':' character implies time.
+        elif ':' in text[-1]:
+            timeText = text[-1]
+            text = text[:-1]
+        # A '/' character implies (the entire) date.
+        elif '/' in text[0]:
+            timeText = ' '.join(text[1:])
+            text = text[:1]
+        dateText = ' '.join(text)
         # Absolute date and time?
-        dateText, timeText = line.split(' ', 1)
-        tDate = guessDate(dateText, DATE_FORMATS)
+        tDate = guessDate(dateText, SPACE_DATE_FORMATS + DATE_FORMATS)
         if tDate is not None:
             tTime = guessTime(timeText, TIME_FORMATS)
             if tTime is not None:
@@ -199,15 +223,6 @@ def parseHumaneDateTime(line, hint=TIME_HINT_END, today=None):
         else:
             return tDate + timedelta(days=1)
 
-    print("hi")
-    # Date and time?
-    split = line.split()
-    split_date = ' '.join(split[:-1])
-    split_time = split[-1]
-    tDate = guessDate(split_date, SPACE_DATE_FORMATS)
-    tTime = guessTime(split_time, TIME_FORMATS)
-    if tDate is not None and tTime is not None:
-        return datetime.combine(tDate, tTime)
     raise YokadiException("Unable to understand date '%s'" % line)
 
 

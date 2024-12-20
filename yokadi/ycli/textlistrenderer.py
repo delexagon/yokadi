@@ -85,11 +85,10 @@ class TitleFormater(object):
         # Create title
         title = task.title
         if keywords and len(title) < maxWidth:
-            title += ' ('
-            colorizer.setColorAt(len(title), C.BOLD)
+            title += ' '
+            colorizer.setColorAt(len(title), C.ORANGE)
             title += keywords
             colorizer.setResetAt(len(title))
-            title += ')'
 
         # Crop title to fit in self.width
         titleWidth = len(title)
@@ -142,7 +141,10 @@ class DueDateFormater(object):
         if not task.dueDate:
             return "", None
         delta = task.dueDate - self.today
-        value = task.dueDate.strftime("%x %I:%M %p")
+        if delta.days != 0:
+            value = task.dueDate.strftime("%x %H:%M")
+        else:
+            value = task.dueDate.strftime("%H:%M")
 
         if self.shortFormat:
             value = ydateutils.formatTimeDelta(delta)
@@ -167,7 +169,7 @@ class TextListRenderer(object):
         self.firstHeader = True
         self.splitOnDate = splitOnDate
 
-        if self.termWidth < 70:
+        if self.termWidth < 100:
             dueColumnWidth = 8
             shortDateFormat = True
         else:

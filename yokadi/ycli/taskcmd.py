@@ -88,35 +88,6 @@ class TaskCmd(object):
         if args.describe:
             self.do_t_describe(self.lastTaskId)
         return task
-        
-    def do_t_add_extra(self, line):
-        """Add new task. Will prompt to create keywords if they do not exist.
-        t_add <projectName> [@<keyword1>] [@<keyword2>] <title>"""
-        splits = re.split(r' ([a-z])\1{2,} ', line)
-        it = iter(splits)
-        add_str = next(it).strip()
-        task = self._t_add("t_add", add_str)
-        if task:
-            try:
-                for break_ in it:
-                    subcommand = parseutils.simplifySpaces(next(it))
-                    if break_[0] == 'd':
-                        self._t_due(task, subcommand)
-                    elif break_[0] == 'r':
-                        self._t_recurs(task, subcommand)
-                    elif break_[0] == 'e':
-                        self._t_simple_describe(task, subcommand)
-            except YokadiException as error:
-                print(f"Error encountered: {error}; task not added")
-                return
-        
-        else:
-            return
-        self.session.add(task)
-        self.session.commit()
-        print("Added task '%s' (id=%d)" % (task.title, task.id))
-
-    complete_t_add_extra = projectAndKeywordCompleter
 
     def do_t_add(self, line):
         """Add new task. Will prompt to create keywords if they do not exist.
@@ -128,6 +99,53 @@ class TaskCmd(object):
             print("Added task '%s' (id=%d)" % (task.title, task.id))
 
     complete_t_add = projectAndKeywordCompleter
+    
+    
+    def parser_t_add_ext(self):
+        parser = YokadiOptionParser()
+        parser.description = "Add a new task. " \
+                             "Additional arguments can be used to specify characteristics of the task. " \
+
+        parser.add_argument("name", nargs="+", metavar="<task name>")
+
+        parser.add_argument("-d", "--date", dest="date",
+                            nargs='+',
+                            help="add a date (in various formats)")
+                            
+        parser.add_argument("-r", "--recur", dest="recurrence",
+                            nargs='+',
+                            help="make this task recur")
+                            
+        parser.add_argument("-e", "--describe", dest="description",
+                            nargs='+',
+                            help="add a description to the task")
+                            
+        parser.add_argument("-u", "--urgency", dest="urgency",
+                            action='store', metavar='<-99 to 100>',
+                            help="specify the urgency of the task")
+
+        return parser
+    
+    def do_t_add_ext(self, line):
+        """Add new task. Will prompt to create keywords if they do not exist."""
+        parser = self.parser_t_add_ext()
+        args = parser.parse_args(line)
+        
+        task = self._t_add("t_add", ' '.join(args.name))
+        if args.date is not None:
+            self._t_due(task, ' '.join(args.date))
+        if args.recurrence is not None:
+            self._t_recurs(task, ' '.join(args.recurrence))
+        if args.description is not None:
+            self._t_simple_describe(task, ' '.join(args.description))
+        if args.urgency is not None:
+            self._t_urgency(task, args.urgency)
+        
+        self.session.add(task)
+        self.session.commit()
+        print("Added task '%s' (id=%d)" % (task.title, task.id))
+
+    complete_t_add_ext = projectAndKeywordCompleter
 
     def do_bug_add(self, line):
         """Add a bug-type task. Will create a task and ask additional info.
@@ -181,25 +199,6 @@ class TaskCmd(object):
             self.lastTaskId = task.id
         return task
 
-    def _t_simple_describe(self, task, line):
-        def updateDescription(description):
-            task.description = description
-        description = line.strip()
-        updateDescription(description)
-        print("Set description to '%s' (id=%d)" % (task.description, task.id))
-    
-    def do_t_simple_describe(self, line):
-        """Enter a shorter description of a task.
-        t_describe <id> [words]"""
-        line = parseutils.simplifySpaces(line)
-        task_id, line = line.split(' ', 1)
-        task = self.getTaskFromId(task_id)
-        self._t_simple_describe(task, line)
-        self.session.merge(task)
-        self.session.commit()
-
-    complete_t_describe = taskIdCompleter
-    
     def do_t_describe(self, line):
         """Starts an editor to enter a longer description of a task.
         t_describe <id>"""
@@ -215,28 +214,48 @@ class TaskCmd(object):
         except Exception as e:
             raise YokadiException(e)
         updateDescription(description)
-        self.session.merge(task)
         self.session.commit()
 
     complete_t_describe = taskIdCompleter
+    
+    def _t_simple_describe(self, task, line):
+        def updateDescription(description):
+            task.description = description
+        description = line.strip()
+        updateDescription(description)
+        print("Set description to '%s' (id=%d)" % (task.description, task.id))
+
+    def do_t_simple_describe(self, line):
+        """Enter a shorter description of a task.
+        t_describe <id> [words]"""
+        line = parseutils.simplifySpaces(line)
+        task_id, line = line.split(' ', 1)
+        task = self.getTaskFromId(task_id)
+        self._t_simple_describe(task, line)
+        self.session.commit()
+
+    complete_t_describe = taskIdCompleter
+    
+    def do_t_next(self, line):
+        task = self.getTaskFromId(line)
+        if not task.recurrence:
+          print("Warning: Task '%s' is not recurring, and the date has not been changed" % task.title)
+        task.next_recurrence()
+        self.session.commit()
+        print("Task '%s' next occurrence is scheduled at %s" % (task.title, task.dueDate))
+
+    complete_t_next = taskIdCompleter
 
     def do_t_set_urgency(self, line):
         """@deprecated: should be removed"""
         tui.warnDeprecated("t_set_urgency", "t_urgency")
         self.do_t_urgency(line)
-
-    def do_t_urgency(self, line):
-        """Defines urgency of a task.
-        t_urgency <id> <value>"""
-
-        tokens = parseutils.simplifySpaces(line).split(" ")
-        if len(tokens) != 2:
-            raise BadUsageException("You must provide a taskId and an urgency value")
-        task = self.getTaskFromId(tokens[0])
+        
+    def _t_urgency(self, task, value):
         try:
             # Do not use isdigit(), so that we can set negative urgency. This
             # make it possible to stick tasks to the bottom of the list.
-            urgency = int(tokens[1])
+            urgency = int(value)
         except ValueError:
             raise BadUsageException("Task urgency must be a digit")
 
@@ -248,7 +267,18 @@ class TaskCmd(object):
             urgency = -99
 
         task.urgency = urgency
-        self.session.merge(task)
+
+    def do_t_urgency(self, line):
+        """Defines urgency of a task.
+        t_urgency <id> <value>"""
+
+        tokens = parseutils.simplifySpaces(line).split(" ")
+        if len(tokens) != 2:
+            raise BadUsageException("You must provide a taskId and an urgency value")
+        task = self.getTaskFromId(tokens[0])
+        
+        self._t_urgency(task, tokens[1])
+        
         self.session.commit()
 
     complete_t_set_urgency = taskIdCompleter
@@ -260,16 +290,6 @@ class TaskCmd(object):
         self._t_set_status(line, 'started')
 
     complete_t_mark_started = taskIdCompleter
-    
-    def do_t_next(self, line):
-        task = self.getTaskFromId(line)
-        if not task.recurrence:
-          print("Warning: Task '%s' is not recurring, and the date has not been changed" % task.title)
-        task.next_recurrence()
-        self.session.commit()
-        print("Task '%s' next occurrence is scheduled at %s" % (task.title, task.dueDate))
-    
-    complete_t_next = taskIdCompleter
 
     def do_t_mark_done(self, line):
         """Mark task as done.
@@ -689,6 +709,23 @@ class TaskCmd(object):
         self._renderList(renderer, projectList, filters, order, limit=None,
                          groupKeyword=args.keyword)
     complete_n_list = projectAndKeywordCompleter
+    
+    def do_t_sort(self, line):
+        """Reorder the urgency of tasks of a project according to the due date.
+        t_sort <project_name>"""
+        try:
+            project = self.session.query(Project).filter_by(name=line).one()
+        except (MultipleResultsFound, NoResultFound):
+            raise BadUsageException("You must provide a valid project name")
+
+        taskList = self.session.query(Task).filter(Task.projectId == project.id,
+                                                   Task.status != 'done').order_by(desc(Task.dueDate))
+
+        for urgency, x in enumerate(taskList):
+            task = self.session.query(Task).get(x.id)
+            task.urgency = urgency
+        self.session.commit()
+    complete_t_sort = ProjectCompleter(1)
 
     def do_t_reorder(self, line):
         """Reorder tasks of a project.
@@ -715,29 +752,10 @@ class TaskCmd(object):
 
         ids.reverse()
         for urgency, taskId in enumerate(ids):
-            task = self.session.query(Task).get(taskId)
+            task = self.session.get(Task, taskId)
             task.urgency = urgency
-            self.session.merge(task)
         self.session.commit()
     complete_t_reorder = ProjectCompleter(1)
-    
-    def do_t_sort(self, line):
-        """Reorder the urgency of tasks of a project according to the due date.
-        t_sort <project_name>"""
-        try:
-            project = self.session.query(Project).filter_by(name=line).one()
-        except (MultipleResultsFound, NoResultFound):
-            raise BadUsageException("You must provide a valid project name")
-
-        taskList = self.session.query(Task).filter(Task.projectId == project.id,
-                                                   Task.status != 'done').order_by(desc(Task.dueDate))
-
-        for urgency, x in enumerate(taskList):
-            task = self.session.query(Task).get(x.id)
-            task.urgency = urgency
-            self.session.merge(task)
-        self.session.commit()
-    complete_t_sort = ProjectCompleter(1)
 
     def do_t_medit(self, line):
         """Mass edit tasks of a project.
@@ -989,8 +1007,8 @@ class TaskCmd(object):
             raise YokadiException("Give a task id and time, date or date & time")
         taskId, line = line.strip().split(" ", 1)
         task = self.getTaskFromId(taskId)
+        
         self._t_due(task, line)
-        self.session.merge(task)
         self.session.commit()
     complete_t_set_due = dueDateCompleter
     complete_t_due = dueDateCompleter
@@ -1016,13 +1034,12 @@ class TaskCmd(object):
         kwDict = task.getKeywordDict()
         kwDict.update(newKwDict)
         task.setKeywordDict(kwDict)
-        self.session.merge(task)
         self.session.commit()
-
+        
     def _t_recurs(self, task, line):
         rule = RecurrenceRule.fromHumaneString(line)
         task.setRecurrenceRule(rule)
-    
+
     def do_t_recurs(self, line):
         """Make a task recurs
         t_recurs <id> yearly <dd/mm> <HH:MM>
@@ -1030,7 +1047,6 @@ class TaskCmd(object):
         t_recurs <id> monthly <first/second/third/last> <mo, tu, we, th, fr, sa, su> <hh:mm>
         t_recurs <id> quarterly <dd> <HH:MM>
         t_recurs <id> quarterly <first/second/third/last> <mo, tu, we, th, fr, sa, su> <hh:mm>
-        t_recurs <id> biweekly <mo, tu, we, th, fr, sa, su> <hh:mm>
         t_recurs <id> weekly <mo, tu, we, th, fr, sa, su> <hh:mm>
         t_recurs <id> daily <HH:MM>
         t_recurs <id> none (remove recurrence)"""
@@ -1039,8 +1055,8 @@ class TaskCmd(object):
             raise YokadiException("You should give at least two arguments: <task id> <recurrence>")
         task = self.getTaskFromId(tokens[0])
         self._t_recurs(task, tokens[1])
-        self.session.commit()
         print("Recurrence set; task '%s' next occurrence is scheduled at %s" % (task.title, task.dueDate))
+        self.session.commit()
     complete_t_recurs = recurrenceCompleter
 
     def do_t_filter(self, line):

@@ -238,7 +238,7 @@ class TaskCmd(object):
     def do_t_next(self, line):
         task = self.getTaskFromId(line)
         if not task.recurrence:
-          print("Warning: Task '%s' is not recurring, and the date has not been changed" % task.title)
+            print("Warning: Task '%s' is not recurring, and the date has not been changed" % task.title)
         task.next_recurrence()
         self.session.commit()
         print("Task '%s' next occurrence is scheduled at %s" % (task.title, task.dueDate))

@@ -180,7 +180,7 @@ def parseHumaneDateTime(line, hint=None, today=None):
             timeText = ' '.join(text[-2:])
             text = text[:-2]
         # In the formats, a date can be at most three words.
-        elif text.len() > 3:
+        elif len(text) > 3:
             timeText = ' '.join(text[3:])
             text = text[:3]
         # A ':' character implies time.

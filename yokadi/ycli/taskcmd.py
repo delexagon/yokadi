@@ -103,7 +103,7 @@ class TaskCmd(object):
     def parser_t_add_ext(self):
         parser = YokadiOptionParser()
         parser.description = "Add a new task. " \
-                             "Additional arguments can be used to specify characteristics of the task. " \
+                             "Additional arguments can be used to specify characteristics of the task. "
 
         parser.add_argument("name", nargs="+", metavar="<task name>")
 

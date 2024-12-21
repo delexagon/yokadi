@@ -93,7 +93,6 @@ def guessTime(text, formats_set):
         out -= timedelta(hours=12)
     return out.time()
 
-
 def parseHumaneDateTime(line, hint=None, today=None):
     """Parse human date and time and return structured datetime object
     Datetime  can be absolute (23/10/2008 10:38) or relative (+5M, +3H, +1D, +6W)

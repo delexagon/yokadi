@@ -99,8 +99,7 @@ class TaskCmd(object):
             print("Added task '%s' (id=%d)" % (task.title, task.id))
 
     complete_t_add = projectAndKeywordCompleter
-    
-    
+
     def parser_t_add_ext(self):
         parser = YokadiOptionParser()
         parser.description = "Add a new task. " \
@@ -111,26 +110,26 @@ class TaskCmd(object):
         parser.add_argument("-d", "--date", dest="date",
                             nargs='+',
                             help="add a date (in various formats)")
-                            
+
         parser.add_argument("-r", "--recur", dest="recurrence",
                             nargs='+',
                             help="make this task recur")
-                            
+
         parser.add_argument("-e", "--describe", dest="description",
                             nargs='+',
                             help="add a description to the task")
-                            
+
         parser.add_argument("-u", "--urgency", dest="urgency",
                             action='store', metavar='<-99 to 100>',
                             help="specify the urgency of the task")
 
         return parser
-    
+
     def do_t_add_ext(self, line):
         """Add new task. Will prompt to create keywords if they do not exist."""
         parser = self.parser_t_add_ext()
         args = parser.parse_args(line)
-        
+
         task = self._t_add("t_add", ' '.join(args.name))
         if args.date is not None:
             self._t_due(task, ' '.join(args.date))
@@ -140,7 +139,7 @@ class TaskCmd(object):
             self._t_simple_describe(task, ' '.join(args.description))
         if args.urgency is not None:
             self._t_urgency(task, args.urgency)
-        
+
         self.session.add(task)
         self.session.commit()
         print("Added task '%s' (id=%d)" % (task.title, task.id))
@@ -217,7 +216,7 @@ class TaskCmd(object):
         self.session.commit()
 
     complete_t_describe = taskIdCompleter
-    
+
     def _t_simple_describe(self, task, line):
         def updateDescription(description):
             task.description = description
@@ -235,7 +234,7 @@ class TaskCmd(object):
         self.session.commit()
 
     complete_t_describe = taskIdCompleter
-    
+
     def do_t_next(self, line):
         task = self.getTaskFromId(line)
         if not task.recurrence:
@@ -250,7 +249,7 @@ class TaskCmd(object):
         """@deprecated: should be removed"""
         tui.warnDeprecated("t_set_urgency", "t_urgency")
         self.do_t_urgency(line)
-        
+
     def _t_urgency(self, task, value):
         try:
             # Do not use isdigit(), so that we can set negative urgency. This
@@ -276,9 +275,7 @@ class TaskCmd(object):
         if len(tokens) != 2:
             raise BadUsageException("You must provide a taskId and an urgency value")
         task = self.getTaskFromId(tokens[0])
-        
         self._t_urgency(task, tokens[1])
-        
         self.session.commit()
 
     complete_t_set_urgency = taskIdCompleter
@@ -373,17 +370,17 @@ class TaskCmd(object):
         parser = self.parser_t_remove()
         args = parser.parse_args(line)
         for id in args.ids:
-          task = self.getTaskFromId(id)
-          if not args.force:
-              if not tui.confirm("Remove task '%s'" % task.title):
-                  return
-          project = task.project
-          self.session.delete(task)
-          print("Task '%s' removed" % (task.title))
+            task = self.getTaskFromId(id)
+            if not args.force:
+                if not tui.confirm("Remove task '%s'" % task.title):
+                    return
+            project = task.project
+            self.session.delete(task)
+            print("Task '%s' removed" % (task.title))
 
-          # Delete project with no associated tasks
-          if self.session.query(Task).filter_by(project=project).count() == 0:
-              self.session.delete(project)
+            # Delete project with no associated tasks
+            if self.session.query(Task).filter_by(project=project).count() == 0:
+                self.session.delete(project)
         self.session.commit()
     complete_t_remove = taskIdCompleter
 
@@ -445,7 +442,7 @@ class TaskCmd(object):
                             type=int,
                             help="tasks with urgency greater or equal than <urgency>",
                             metavar="<urgency>")
-                            
+
         parser.add_argument("-l", "--limit", dest="limit",
                             type=int,
                             help="maximum number of tasks to print",
@@ -709,7 +706,7 @@ class TaskCmd(object):
         self._renderList(renderer, projectList, filters, order, limit=None,
                          groupKeyword=args.keyword)
     complete_n_list = projectAndKeywordCompleter
-    
+
     def do_t_sort(self, line):
         """Reorder the urgency of tasks of a project according to the due date.
         t_sort <project_name>"""
@@ -970,7 +967,7 @@ class TaskCmd(object):
         """@deprecated: should be removed"""
         tui.warnDeprecated("t_set_due", "t_due")
         self.do_t_due(line)
-        
+
     def _t_due(self, task, line):
         if line.lower() == "none":
             task.dueDate = None
@@ -1007,7 +1004,7 @@ class TaskCmd(object):
             raise YokadiException("Give a task id and time, date or date & time")
         taskId, line = line.strip().split(" ", 1)
         task = self.getTaskFromId(taskId)
-        
+
         self._t_due(task, line)
         self.session.commit()
     complete_t_set_due = dueDateCompleter
@@ -1035,7 +1032,7 @@ class TaskCmd(object):
         kwDict.update(newKwDict)
         task.setKeywordDict(kwDict)
         self.session.commit()
-        
+
     def _t_recurs(self, task, line):
         rule = RecurrenceRule.fromHumaneString(line)
         task.setRecurrenceRule(rule)
